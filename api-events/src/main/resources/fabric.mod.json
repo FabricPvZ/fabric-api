@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "api-events",
+  "version": "1.0.0",
+  "name": "PvZ Fabric API Events",
+  "description": "Gameplay (lawn) and application lifecycle events, and the game hook bridges that fire them.",
+  "authors": [
+    "PvZ Fabric"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "cn.enaium.fabricpvz.api.ApiEventsInitializer"
+    ]
+  },
+  "depends": {
+    "api-base": ">=1.0.0",
+    "pvz-portable": "*"
+  }
+}
