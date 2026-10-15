@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "api-plant",
+  "version": "1.0.0",
+  "name": "PvZ Fabric API Plants",
+  "description": "Register custom plants: seed type, name, cost, packet art, reanimation, almanac text and behaviour hooks.",
+  "authors": [
+    "PvZ Fabric"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "depends": {
+    "api-base": ">=1.0.0",
+    "pvz-portable": "*"
+  }
+}
