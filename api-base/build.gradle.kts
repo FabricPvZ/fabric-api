@@ -1,10 +1,11 @@
 plugins {
     id("java-library")
-    `maven-publish`
+    // Maven Central (Central Portal) publication of this module: see the root build for the credentials
+    alias(libs.plugins.maven.publish)
 }
 
 group = "cn.enaium.fabricpvz"
-version = "1.0.0"
+version = "1.2.0"
 
 java {
     toolchain {
@@ -29,8 +30,8 @@ dependencies {
     // Fabric parity: fabric-api depends on the game it extends, and the game depends on this API at
     // runtime, so the game is a compile-only dependency of every API module (it is never published
     // in the POM, which keeps the game -> api -> game cycle out of the dependency graph).
-    compileOnly("cn.enaium.fabricpvz:pvz-portable:1.0.0")
-    testImplementation("cn.enaium.fabricpvz:pvz-portable:1.0.0")
+    compileOnly("cn.enaium.fabricpvz:pvz-portable:1.1.0")
+    testImplementation("cn.enaium.fabricpvz:pvz-portable:1.1.0")
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -57,23 +58,37 @@ tasks.withType<Test>().configureEach {
     }
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            groupId = "cn.enaium.fabricpvz"
-            artifactId = "api-base"
-            version = "1.0.0"
-            pom {
-                name.set("api-base")
-                description.set("PvZ Fabric API: mod facade, mod queries and the Fabric-shaped event bus")
-                licenses {
-                    license {
-                        name.set("MIT")
-                        url.set("https://opensource.org/licenses/MIT")
-                    }
-                }
+// The publication to Maven Central (the Central Portal). The credentials and the GPG key come from
+// ~/.gradle/gradle.properties (see the root build, where the same block is configured for the
+// aggregator); the sources and javadoc jars Central requires, and the signature of every artifact,
+// are added by the plugin.
+mavenPublishing {
+    publishToMavenCentral(true)
+    signAllPublications()
+
+    coordinates("cn.enaium.fabricpvz", "api-base", "1.2.0")
+
+    pom {
+        name.set("api-base")
+        description.set("PvZ Fabric API: mod facade, mod queries and the Fabric-shaped event bus")
+        url.set("https://github.com/FabricPvZ/fabric-api")
+        licenses {
+            license {
+                name.set("MIT")
+                url.set("https://opensource.org/licenses/MIT")
             }
+        }
+        developers {
+            developer {
+                id.set("enaium")
+                name.set("Enaium")
+                url.set("https://github.com/Enaium")
+            }
+        }
+        scm {
+            url.set("https://github.com/FabricPvZ/fabric-api")
+            connection.set("scm:git:git://github.com/FabricPvZ/fabric-api.git")
+            developerConnection.set("scm:git:ssh://git@github.com/FabricPvZ/fabric-api.git")
         }
     }
 }

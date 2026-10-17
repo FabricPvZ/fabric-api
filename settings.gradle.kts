@@ -37,4 +37,5 @@ rootProject.name = "fabric-api"
 include("api-base")
 include("api-events")
 include("api-plant")
+include("api-resource")
 include("api-zombie")

@@ -2,8 +2,6 @@ package cn.enaium.fabricpvz.api.zombie;
 
 import java.util.function.Consumer;
 
-import cn.enaium.fabricpvz.portable.lawn.content.CustomZombieType;
-import cn.enaium.fabricpvz.portable.lawn.content.ZombieBehaviour;
 import cn.enaium.fabricpvz.portable.sexy.Rect;
 
 /**
@@ -28,9 +26,9 @@ import cn.enaium.fabricpvz.portable.sexy.Rect;
  * <p>Plain Java callbacks only: the mod's own classes implement them, so nothing on the mod's side
  * needs reflection.
  *
- * <p>Fields map one to one onto {@link CustomZombieType}, the game's own description of a mod
- * zombie, which is what {@code Zombie::GetZombieDefinition}, {@code Zombie::ZombieInitialize} and the
- * wave composer read.
+ * <p>Fields map one to one onto {@link CustomZombieType}, the description {@link ZombieHooks} serves
+ * to the game: registration writes it as a {@code ZombieDefinition} row into {@code Zombie.gZombieDefs}
+ * (which the wave composer reads) and the per-type setup is dispatched through this module's Mixins.
  */
 public final class ZombieType {
 
@@ -47,15 +45,21 @@ public final class ZombieType {
             definition.mStringKeyStem = id.toUpperCase(java.util.Locale.ROOT);
         }
 
-        /** Display name shown in the almanac. */
+        /**
+         * Display name of the zombie, for mods that want to show one; the game's own names come from
+         * the string file through the key stem, which the definition row carries.
+         */
         public Builder name(String theName) {
             definition.mName = theName;
             return this;
         }
 
-        /** Almanac body text. */
-        public Builder almanacDescription(String theDescription) {
-            definition.mAlmanacDescription = theDescription;
+        /**
+         * Description shown on the almanac's zombie page; defaults to the name, and to the game's own
+         * {@code [<KEY_STEM>_DESCRIPTION]} string when that is empty too.
+         */
+        public Builder almanacDescription(String theAlmanacDescription) {
+            definition.mAlmanacDescription = theAlmanacDescription;
             return this;
         }
 
@@ -186,8 +190,9 @@ public final class ZombieType {
         }
 
         /**
-         * Makes the zombie take part in wave composition, grave-rising picks and the almanac zombie
-         * list.
+         * Makes the zombie take part in wave composition and grave-rising picks: the definition row
+         * carries the numbers below, and a non-zero pick weight is what the wave composer's
+         * {@code BoardWaves::PickZombieType} looks for.
          *
          * @param thePoints {@code ZombieDefinition#mZombieValue}, what the zombie costs the wave
          *     composer
@@ -196,7 +201,6 @@ public final class ZombieType {
          * @param thePickWeight relative spawn weight
          */
         public Builder wave(int thePoints, int theStartingLevel, int theFirstAllowedWave, int thePickWeight) {
-            definition.mWaveEnabled = true;
             definition.mZombieValue = thePoints;
             definition.mStartingLevel = theStartingLevel;
             definition.mFirstAllowedWave = theFirstAllowedWave;
@@ -228,7 +232,15 @@ public final class ZombieType {
             return this;
         }
 
-        /** Callback run at the end of the zombie's initialisation. */
+        /**
+         * Callback run at the end of the zombie's initialisation.
+         *
+         * <p>It runs again, for every zombie of the registered type, whenever a mid-level save is
+         * loaded ({@code Board::loadGame}), because the save carries the zombie's fields and
+         * reanimation ids but not the per-track {@code mImageOverride} a mod painted on those
+         * reanimations: the callback is what rebuilds the art after a load. It must therefore be
+         * <b>idempotent</b> and must not accumulate one-shot state.
+         */
         public Builder onSpawned(Consumer<cn.enaium.fabricpvz.portable.lawn.Zombie> theCallback) {
             spawned = theCallback;
             return this;

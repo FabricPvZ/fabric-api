@@ -8,10 +8,8 @@ import cn.enaium.fabricpvz.portable.lawn.Board;
 import cn.enaium.fabricpvz.portable.lawn.Plant;
 import cn.enaium.fabricpvz.portable.lawn.PlantSubClass;
 import cn.enaium.fabricpvz.portable.lawn.ReanimationType;
-import cn.enaium.fabricpvz.portable.lawn.SeedType;
-import cn.enaium.fabricpvz.portable.lawn.content.CustomPlantType;
-import cn.enaium.fabricpvz.portable.lawn.content.PlantBehaviour;
 import cn.enaium.fabricpvz.portable.sexy.Rect;
+import cn.enaium.fabricpvz.portable.sexy.graphics.Image;
 
 /**
  * A plant a mod registers, described with a builder.
@@ -38,9 +36,9 @@ import cn.enaium.fabricpvz.portable.sexy.Rect;
  * <p>All of this is plain Java: the mod's own classes implement the callbacks, so nothing on the
  * mod's side needs reflection, an annotation processor or a generated accessor.
  *
- * <p>Fields map one to one onto {@link CustomPlantType}, the game's own description of a mod plant,
- * which is what the game reads from {@code Plant::GetPlantDefinition}, the planting rules, the seed
- * packet and the almanac.
+ * <p>Fields map one to one onto {@link CustomPlantType}, the description {@link PlantHooks} serves
+ * to the game: registration writes it as a {@code PlantDefinition} row into {@code Plant.gPlantDefs}
+ * and the rest (names, flags, behaviour, packet art) is dispatched through the Mixins of this module.
  */
 public final class PlantType {
 
@@ -78,7 +76,7 @@ public final class PlantType {
             definition.mStringKeyStem = id.toUpperCase(java.util.Locale.ROOT);
         }
 
-        /** Display name shown on the seed packet and in the almanac. */
+        /** Display name shown on the seed packet. */
         public Builder name(String theName) {
             definition.mName = theName;
             return this;
@@ -90,9 +88,12 @@ public final class PlantType {
             return this;
         }
 
-        /** Almanac body text; defaults to the tooltip. */
-        public Builder almanacDescription(String theDescription) {
-            definition.mAlmanacDescription = theDescription;
+        /**
+         * Description shown on the almanac's plant page; defaults to the tooltip, and to the game's
+         * own {@code [<KEY_STEM>_DESCRIPTION]} string when that is empty too.
+         */
+        public Builder almanacDescription(String theAlmanacDescription) {
+            definition.mAlmanacDescription = theAlmanacDescription;
             return this;
         }
 
@@ -135,9 +136,64 @@ public final class PlantType {
             return this;
         }
 
+        /**
+         * Shots the plant fires per launch: {@code 2} (like the repeater's two peas) or {@code 4}
+         * (like the gatling pea's four). Anything else is rejected - a plant that fires one pea needs
+         * no call, that is the default.
+         *
+         * <p>The game hard-codes the multi-shot cadences on seed types, so a registered shooting plant
+         * would otherwise fire exactly one pea:
+         * {@code Plant::FindTargetAndFire} (Plant.cpp:734) gives a repeater a 26-tick shooting window
+         * at animation rate 45 and a gatling pea a 100-tick one at 38; {@code Plant::UpdateShooter}
+         * (Plant.cpp:945) fires a repeater's second pea when the launch counter reaches 25; and
+         * {@code Plant::UpdateShooting} (Plant.cpp:2893) fires a gatling pea's peas at shooting
+         * counters 68/51/35/18. The API's plant Mixin reproduces exactly those numbers for a registered
+         * plant that declared a burst.
+         *
+         * @param theShots {@code 2} or {@code 4}
+         * @return this builder
+         * @throws IllegalArgumentException for any other value
+         */
+        public Builder burst(int theShots) {
+            if (theShots != 2 && theShots != 4) {
+                throw new IllegalArgumentException("A plant's burst is 2 or 4 shots, got " + theShots);
+            }
+            definition.mBurst = theShots;
+            return this;
+        }
+
         /** Maximum health; upstream plants default to 300. */
         public Builder health(int theHealth) {
             definition.mPlantHealth = theHealth;
+            return this;
+        }
+
+        /**
+         * Projectile the plant fires when it shoots, e.g.
+         * {@code ProjectileType.PROJECTILE_FIREBALL}. A {@code SUBCLASS_SHOOTER} plant needs one or
+         * {@code Plant::Fire} throws ("no projectile") like it does for an unknown upstream seed type.
+         *
+         * <p>Every type the game knows can be fired, including the ones upstream only ever produced by
+         * converting another projectile: a fire pea is drawn from the flame reanimation the torchwood
+         * conversion attaches, and the game gives a directly fired one the same body (see
+         * {@code docs/VERIFICATION.md} §46).
+         *
+         * @param theProjectileType a {@code ProjectileType} value
+         */
+        public Builder projectile(int theProjectileType) {
+            definition.mProjectileType = theProjectileType;
+            return this;
+        }
+
+        /**
+         * Seed type the plant is gated behind: it only appears in the seed chooser, and is only
+         * preloaded, once {@code LawnApp::HasSeedType} returns true for the given seed (e.g.
+         * {@code SeedType.SEED_SNOWPEA} to release the plant with the Snow Pea's award).
+         *
+         * @param theUnlockSeedType a {@code SeedType} value, or {@code SeedType.SEED_NONE} to ungate
+         */
+        public Builder unlockAfter(int theUnlockSeedType) {
+            definition.mUnlockSeedType = theUnlockSeedType;
             return this;
         }
 
@@ -156,6 +212,37 @@ public final class PlantType {
         public Builder packetArt(int theImageId, int theCelIndex) {
             definition.mPacketImageId = theImageId;
             definition.mPacketCelIndex = theCelIndex;
+            return this;
+        }
+
+        /**
+         * Packet art pinned to an image the mod <b>builds at runtime</b>, handed over as a
+         * <b>lazy</b> supplier the game asks once per packet draw.
+         *
+         * <p>A supplier that answers {@code null} means "not built yet": the packet is drawn the way
+         * the game draws it (the packet background and the cost), and the next draw asks again. An
+         * image is drawn 1:1 at the packet's own origin (a {@code SEED_PACKET_WIDTH} x
+         * {@code SEED_PACKET_HEIGHT} image fills the packet), and cancels the game's own plant
+         * drawing for that packet.
+         *
+         * <p>Use this rather than {@link #packetArt(int, int)} whenever the image is made at runtime
+         * (e.g. rendered from the retail art by the game's own painters, see
+         * {@code GameArt#packetArt(int)}): a fixed image <em>id</em> would have to be one the game's
+         * resource table owns, and a resource group load overwrites those with the retail file, wiping
+         * the mod's image. The id route also opens a window in which the mod's image does not exist
+         * yet - and the seed chooser draws its packets before any board tick runs, so a mod that only
+         * retried from a tick hook would show the retail image (or nothing) exactly when the player
+         * picks seeds.
+         *
+         * @param theImage the supplier of this plant's packet art, asked once per draw; it may answer
+         *     {@code null} until the art is buildable
+         */
+        public Builder packetArt(java.util.function.Supplier<Image> theImage) {
+            if (theImage == null) {
+                throw new IllegalArgumentException("A packet art supplier is required; use "
+                        + "packetArtFromReanimation() to keep the game's own art");
+            }
+            definition.mPacketImage = theImage;
             return this;
         }
 
@@ -189,7 +276,44 @@ public final class PlantType {
             return this;
         }
 
-        /** Whether the seed may appear in seed-chooser/almanac UIs; default {@code true}. */
+        /**
+         * Declares this plant the upgrade of the given seed types: dragging this seed onto a square
+         * holding one of them replaces that plant and plants this one in its place - what the retail
+         * gatling pea does to the repeater, i.e. the dual of {@code Plant::IsUpgradableTo}
+         * (Plant.cpp:2608-2641), which the game only knows its own hard-coded pairs of.
+         *
+         * <p>This is <b>not</b> {@link #upgrade(boolean)}: that one only picks the purple (upgrade)
+         * seed-packet background for this seed, while this one is about the plants this seed may be
+         * planted on. A plant may declare either, both or neither.
+         *
+         * <p>May be called repeatedly and with repeated values: the seed types are de-duplicated, and
+         * calling it with none leaves the plant an upgrade of nothing.
+         *
+         * @param theSeedTypes the seed types this plant upgrades - usually retail plants, but a seed
+         *     type another mod registered works as well
+         */
+        public Builder upgradeFrom(int... theSeedTypes) {
+            for (int aSeedType : theSeedTypes) {
+                boolean aKnown = false;
+                for (int anExisting : definition.mUpgradeFrom) {
+                    if (anExisting == aSeedType) {
+                        aKnown = true;
+                        break;
+                    }
+                }
+
+                if (!aKnown) {
+                    int[] aGrown = java.util.Arrays.copyOf(definition.mUpgradeFrom,
+                            definition.mUpgradeFrom.length + 1);
+                    aGrown[aGrown.length - 1] = aSeedType;
+                    definition.mUpgradeFrom = aGrown;
+                }
+            }
+
+            return this;
+        }
+
+        /** Whether the seed may appear in the seed chooser; default {@code true}. */
         public Builder chooserVisible(boolean theVisible) {
             definition.mChooserVisible = theVisible;
             return this;
@@ -201,7 +325,15 @@ public final class PlantType {
             return this;
         }
 
-        /** Callback run right after the plant has been placed on a board. */
+        /**
+         * Callback run right after the plant has been placed on a board.
+         *
+         * <p>It runs again, for every plant of the registered seed type, whenever a mid-level save is
+         * loaded ({@code Board::loadGame}), because the save carries the plant's fields and
+         * reanimation ids but not the per-track {@code mImageOverride} a mod painted on those
+         * reanimations: the callback is what rebuilds the art after a load. It must therefore be
+         * <b>idempotent</b> and must not accumulate one-shot state.
+         */
         public Builder onPlanted(Consumer<Plant> theCallback) {
             placed = theCallback;
             return this;

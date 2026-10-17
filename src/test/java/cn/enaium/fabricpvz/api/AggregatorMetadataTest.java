@@ -16,15 +16,15 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Tests the aggregator's metadata: the {@code fabric-api} artifact carries no code of its own, it
- * declares itself as a mod that depends on the four feature modules, and it does not re-declare their
+ * declares itself as a mod that depends on the five feature modules, and it does not re-declare their
  * entry points.
  */
 class AggregatorMetadataTest {
 
 	private static final String MOD_ID = "fabric-api";
-	private static final String VERSION = "1.0.0";
+	private static final String VERSION = "1.2.0";
 	private static final List<String> MODULES =
-			List.of("api-base", "api-events", "api-plant", "api-zombie");
+			List.of("api-base", "api-events", "api-plant", "api-resource", "api-zombie");
 
 	@Test
 	void theAggregatorIsAModThatDependsOnEveryModule() throws Exception {
@@ -53,7 +53,7 @@ class AggregatorMetadataTest {
 	@Test
 	void everyModuleIsInTheBuild() {
 		// The modules are Gradle subprojects of this build; their presence is what makes
-		// `./gradlew build` produce all five artifacts.
+		// `./gradlew build` produce all six artifacts.
 		for (String module : MODULES) {
 			assertTrue(java.nio.file.Files.isDirectory(java.nio.file.Path.of(module)),
 					"missing module directory " + module);

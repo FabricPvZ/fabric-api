@@ -1,10 +1,11 @@
 plugins {
     id("java-library")
-    `maven-publish`
+    // Maven Central (Central Portal) publication of this module: see the root build for the credentials
+    alias(libs.plugins.maven.publish)
 }
 
 group = "cn.enaium.fabricpvz"
-version = "1.0.0"
+version = "1.2.0"
 
 java {
     toolchain {
@@ -20,8 +21,8 @@ dependencies {
     compileOnly(libs.fabric.loader)
     testImplementation(libs.fabric.loader)
 
-    compileOnly("cn.enaium.fabricpvz:pvz-portable:1.0.0")
-    testImplementation("cn.enaium.fabricpvz:pvz-portable:1.0.0")
+    compileOnly("cn.enaium.fabricpvz:pvz-portable:1.1.0")
+    testImplementation("cn.enaium.fabricpvz:pvz-portable:1.1.0")
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -48,23 +49,35 @@ tasks.withType<Test>().configureEach {
     }
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            groupId = "cn.enaium.fabricpvz"
-            artifactId = "api-events"
-            version = "1.0.0"
-            pom {
-                name.set("api-events")
-                description.set("PvZ Fabric API: gameplay (lawn) and application lifecycle events")
-                licenses {
-                    license {
-                        name.set("MIT")
-                        url.set("https://opensource.org/licenses/MIT")
-                    }
-                }
+// The publication to Maven Central (the Central Portal); the credentials and the signing key are the
+// ones the root build documents.
+mavenPublishing {
+    publishToMavenCentral(true)
+    signAllPublications()
+
+    coordinates("cn.enaium.fabricpvz", "api-events", "1.2.0")
+
+    pom {
+        name.set("api-events")
+        description.set("PvZ Fabric API: gameplay (lawn) and application lifecycle events")
+        url.set("https://github.com/FabricPvZ/fabric-api")
+        licenses {
+            license {
+                name.set("MIT")
+                url.set("https://opensource.org/licenses/MIT")
             }
+        }
+        developers {
+            developer {
+                id.set("enaium")
+                name.set("Enaium")
+                url.set("https://github.com/Enaium")
+            }
+        }
+        scm {
+            url.set("https://github.com/FabricPvZ/fabric-api")
+            connection.set("scm:git:git://github.com/FabricPvZ/fabric-api.git")
+            developerConnection.set("scm:git:ssh://git@github.com/FabricPvZ/fabric-api.git")
         }
     }
 }

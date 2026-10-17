@@ -30,7 +30,7 @@ class ApiModInitializerTest {
 
 		assertTrue(PvzFabricApi.isInitialized());
 		assertEquals(PvzFabricApi.VERSION, PvzFabricApi.getVersion());
-		assertEquals("1.0.0", PvzFabricApi.VERSION);
+		assertEquals("1.2.0", PvzFabricApi.VERSION);
 	}
 
 	@Test

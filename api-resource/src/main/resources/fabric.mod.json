@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "api-resource",
+  "version": "1.2.0",
+  "name": "PvZ Fabric API Resources",
+  "description": "Put a mod's own images into the game's resource table: image slots the game never draws, the game's own seed-packet/cached-frame painters, and per-track reanimation recolouring.",
+  "authors": [
+    "PvZ Fabric"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "cn.enaium.fabricpvz.api.resource.ResourceInitializer"
+    ]
+  },
+  "mixins": [
+    "api-resource.mixins.json"
+  ],
+  "depends": {
+    "api-base": ">=1.0.0",
+    "api-events": ">=1.0.0",
+    "pvz-portable": "*"
+  }
+}

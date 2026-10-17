@@ -1,0 +1,26 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "cn.enaium.fabricpvz.api.plant.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "PlantMixin",
+    "PlantOverridesMixin",
+    "TorchwoodConversionMixin",
+    "BoardMixin",
+    "BoardWavesMixin",
+    "ChallengeMixin",
+    "ChallengeBeghouledMixin",
+    "ChallengeWeatherMixin",
+    "CoinMixin",
+    "SeedChooserScreenMixin",
+    "LawnAppMixin",
+    "SeedPacketMixin",
+    "AlmanacMixin",
+    "ZombieCrushMixin",
+    "ZombieSmashMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -2,9 +2,16 @@
 junit = "6.1.3"
 # Fabric Loader is only published to the Fabric maven (https://maven.fabricmc.net/), never Maven Central.
 fabric-loader = "0.19.5"
+# The Maven Central publication of every module of this build. It publishes the `java-library`
+# publication of a project to the Central Portal (sources and javadoc jars included) and signs it with
+# the key named by the `signing.*` properties, which is what Central requires of every artifact.
+vanniktech = "0.37.0"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
+
+[plugins]
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech" }

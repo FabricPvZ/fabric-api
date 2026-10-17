@@ -13,16 +13,23 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import cn.enaium.fabricpvz.portable.lawn.Board;
 import cn.enaium.fabricpvz.portable.lawn.HelmType;
+import cn.enaium.fabricpvz.portable.lawn.ImageID;
+import cn.enaium.fabricpvz.portable.lawn.LawnApp;
 import cn.enaium.fabricpvz.portable.lawn.ReanimationType;
+import cn.enaium.fabricpvz.portable.lawn.Resources;
 import cn.enaium.fabricpvz.portable.lawn.Zombie;
-import cn.enaium.fabricpvz.portable.lawn.content.CustomZombieType;
-import cn.enaium.fabricpvz.portable.lawn.content.ZombieTypeRegistry;
+import cn.enaium.fabricpvz.portable.pvzp.fx.EffectSystem;
+import cn.enaium.fabricpvz.portable.sexy.graphics.MemoryImage;
 
 /**
- * Tests the mod-facing zombie registry: id allocation outside the upstream zombie range, the
- * definition the game and the wave composer read, the armour numbers, head attachments and invalid
- * input handling.
+ * Tests the mod-facing zombie registry: id allocation outside the upstream zombie range, the definition
+ * row the game and the wave composer read out of {@code Zombie.gZombieDefs}, the armour numbers, head
+ * attachments and the {@link ZombieHooks} the Mixins dispatch to.
+ *
+ * <p>The Mixins themselves only run under Fabric Loader, so the behaviour is asserted against
+ * {@link ZombieHooks} directly here; the real dispatch is covered by the game's loader end-to-end test.
  */
 class ZombieRegistryTest {
 
@@ -34,7 +41,6 @@ class ZombieRegistryTest {
 	private static ZombieType registerRunner() {
 		return ZombieType.builder("test_runner")
 				.name("Runner Zombie")
-				.almanacDescription("Runs.")
 				.bodyReanimation(ReanimationType.REANIM_ZOMBIE)
 				.health(400)
 				.helm(HelmType.HELMTYPE_TRAFFIC_CONE, 370)
@@ -43,11 +49,29 @@ class ZombieRegistryTest {
 				.register();
 	}
 
+	/**
+	 * A zombie whose reanimation work is stubbed out: this test has no game app to load a reanimation
+	 * with, so the two {@link ZombieHooks#onSpawned} calls that reach into the app are no-ops here.
+	 */
+	private static Zombie offBoardZombie(int theZombieType) {
+		Zombie zombie = new Zombie() {
+			@Override
+			public void loadPlainZombieReanim() {
+			}
+
+			@Override
+			public void attachShield() {
+			}
+		};
+		zombie.mZombieType = theZombieType;
+		return zombie;
+	}
+
 	@Test
 	void registersOutsideTheUpstreamZombieRange() {
 		ZombieType type = registerRunner();
 
-		assertTrue(type.zombieType() >= cn.enaium.fabricpvz.portable.lawn.ZombieType.CUSTOM_ZOMBIE_FIRST);
+		assertTrue(type.zombieType() >= ZombieRegistry.FIRST_ZOMBIE_TYPE);
 		assertTrue(type.zombieType() < cn.enaium.fabricpvz.portable.lawn.ZombieType.MAX_ZOMBIE_TYPES);
 		assertEquals("test_runner", type.id());
 		assertEquals(1, ZombieRegistry.count());
@@ -66,32 +90,26 @@ class ZombieRegistryTest {
 		assertEquals(HelmType.HELMTYPE_TRAFFIC_CONE, definition.mHelmType);
 		assertEquals(370, definition.mHelmHealth);
 		assertEquals(30, definition.mZombieRect.mX);
-		assertTrue(definition.mWaveEnabled);
 		assertNotNull(definition.mBehaviour);
 
-		// Zombie::GetZombieDefinition resolves it, including the numbers the wave composer reads.
-		var zombieDefinition = Zombie.getZombieDefinition(type.zombieType());
-		assertSame(definition.mDefinition, zombieDefinition);
-		assertEquals(3, zombieDefinition.mZombieValue);
-		assertEquals(4, zombieDefinition.mStartingLevel);
-		assertEquals(6, zombieDefinition.mFirstAllowedWave);
-		assertEquals(2500, zombieDefinition.mPickWeight);
-		assertEquals(ReanimationType.REANIM_ZOMBIE, zombieDefinition.mReanimationType);
+		// The row written into Zombie.gZombieDefs is what Zombie::GetZombieDefinition hands out, and
+		// what the wave composer reads.
+		assertSame(definition.mDefinition, Zombie.gZombieDefs[type.zombieType()]);
+		assertSame(definition.mDefinition, Zombie.getZombieDefinition(type.zombieType()));
+		assertEquals(3, definition.mDefinition.mZombieValue);
+		assertEquals(4, definition.mDefinition.mStartingLevel);
+		assertEquals(6, definition.mDefinition.mFirstAllowedWave);
+		assertEquals(2500, definition.mDefinition.mPickWeight);
+		assertEquals(ReanimationType.REANIM_ZOMBIE, definition.mDefinition.mReanimationType);
 
 		// Upstream zombies are untouched by a registration.
 		var normal = Zombie.getZombieDefinition(cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_NORMAL);
 		assertEquals(cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_NORMAL, normal.mZombieType);
 		assertEquals(1, normal.mZombieValue);
 		assertSame(normal, Zombie.getZombieDefinition(cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_NORMAL));
-	}
 
-	@Test
-	void namesComeFromTheRegistration() {
-		ZombieType type = registerRunner();
-
-		assertEquals("Runner Zombie", ZombieTypeRegistry.displayName(type.zombieType()));
-		assertEquals("Runs.", ZombieTypeRegistry.almanacDescription(type.zombieType()));
-		assertNull(ZombieTypeRegistry.displayName(cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_NORMAL));
+		// A type nobody registered answers "not ours".
+		assertNull(ZombieHooks.canGoInPool(cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_NORMAL));
 	}
 
 	@Test
@@ -121,6 +139,66 @@ class ZombieRegistryTest {
 		assertEquals("anim_head1", definition.mHead.mBodyTrack);
 		assertEquals("anim_hair", definition.mHead.mHiddenLayer);
 		assertEquals(65.0f, definition.mHead.mOffsetX);
+
+		// ZombieHooks.onSpawned is what Zombie::ZombieInitialize calls; the health and armour numbers
+		// land on the zombie from the definition.
+		Zombie zombie = offBoardZombie(type.zombieType());
+		ZombieHooks.onSpawned(zombie);
+		assertEquals(500, zombie.mBodyHealth);
+		assertEquals(HelmType.HELMTYPE_PAIL, zombie.mHelmType);
+		assertEquals(1100, zombie.mHelmHealth);
+		assertEquals(20, zombie.mFlyingHealth);
+	}
+
+	@Test
+	void almanacNamesAndDescriptionsComeFromTheRegistration() {
+		// A registration that describes itself: the almanac gets that text under that name.
+		ZombieType type = ZombieType.builder("test_described")
+				.name("Runner Zombie")
+				.bodyReanimation(ReanimationType.REANIM_ZOMBIE)
+				.almanacDescription("Runs at the plants.")
+				.register();
+		assertEquals("Runner Zombie", ZombieHooks.name(type.zombieType()));
+		assertEquals("Runs at the plants.", ZombieHooks.almanacDescription(type.zombieType()));
+		assertEquals("Runs at the plants.", type.definition().mAlmanacDescription);
+
+		// No description: the name stands in.
+		assertEquals("Runner Zombie", ZombieHooks.almanacDescription(registerRunner().zombieType()));
+
+		// Nothing to say anywhere, and upstream zombie types: the game keeps its own string file.
+		ZombieType silent = ZombieType.builder("test_silent").register();
+		assertNull(ZombieHooks.name(silent.zombieType()));
+		assertNull(ZombieHooks.almanacDescription(silent.zombieType()));
+		assertNull(ZombieHooks.almanacDescription(cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_NORMAL));
+	}
+
+	@Test
+	void canGoInPoolComesFromTheRegistration() {
+		ZombieType type = ZombieType.builder("test_pool")
+				.name("Pool")
+				.bodyReanimation(ReanimationType.REANIM_ZOMBIE)
+				.canGoInPool(true)
+				.register();
+
+		assertEquals(Boolean.TRUE, ZombieHooks.canGoInPool(type.zombieType()));
+	}
+
+	@Test
+	void behaviourCallbacksRunForTheRegisteredZombie() {
+		List<String> calls = new ArrayList<>();
+		ZombieType type = ZombieType.builder("test_behaviour")
+				.name("Behaviour")
+				.bodyReanimation(ReanimationType.REANIM_ZOMBIE)
+				.onSpawned(zombie -> calls.add("spawned"))
+				.onTick(zombie -> calls.add("tick"))
+				.register();
+
+		Zombie zombie = offBoardZombie(type.zombieType());
+
+		// These are the exact calls Zombie::ZombieInitialize and Zombie::Update make through the Mixins.
+		ZombieHooks.onSpawned(zombie);
+		ZombieHooks.onTick(zombie);
+		assertEquals(List.of("spawned", "tick"), calls);
 	}
 
 	@Test
@@ -143,19 +221,6 @@ class ZombieRegistryTest {
 		IllegalArgumentException blankId = assertThrows(IllegalArgumentException.class,
 				() -> ZombieType.builder(""));
 		assertTrue(blankId.getMessage().contains("id"), blankId.getMessage());
-
-		CustomZombieType anonymous = new CustomZombieType();
-		anonymous.mBodyHealth = 100;
-		assertThrows(IllegalArgumentException.class, () -> ZombieTypeRegistry.register(anonymous));
-
-		CustomZombieType noHealth = new CustomZombieType();
-		noHealth.mName = "No Health";
-		noHealth.mBodyHealth = 0;
-		IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
-				() -> ZombieTypeRegistry.register(noHealth));
-		assertTrue(failure.getMessage().contains("health"), failure.getMessage());
-
-		assertThrows(NullPointerException.class, () -> ZombieTypeRegistry.register(null));
 	}
 
 	@Test
@@ -165,6 +230,8 @@ class ZombieRegistryTest {
 		assertTrue(ZombieRegistry.unregister(type.zombieType()));
 		assertFalse(ZombieRegistry.get(type.zombieType()).isPresent());
 		assertEquals(0, ZombieRegistry.count());
+		assertNull(Zombie.gZombieDefs[type.zombieType()], "the definition row goes away with the zombie");
+		assertNull(Zombie.getZombieDefinition(type.zombieType()));
 		assertFalse(ZombieRegistry.unregister(type.zombieType()));
 	}
 
@@ -173,36 +240,89 @@ class ZombieRegistryTest {
 		ZombieType first = ZombieType.builder("test_a").name("A").register();
 		ZombieType second = ZombieType.builder("test_b").name("B").register();
 
-		assertEquals(cn.enaium.fabricpvz.portable.lawn.ZombieType.CUSTOM_ZOMBIE_FIRST, first.zombieType());
-		assertEquals(cn.enaium.fabricpvz.portable.lawn.ZombieType.CUSTOM_ZOMBIE_FIRST + 1, second.zombieType());
+		assertEquals(ZombieRegistry.FIRST_ZOMBIE_TYPE, first.zombieType());
+		assertEquals(ZombieRegistry.FIRST_ZOMBIE_TYPE + 1, second.zombieType());
 		assertEquals(List.of(first, second), ZombieRegistry.all());
 
 		ZombieRegistry.unregister(first.zombieType());
 		ZombieType third = ZombieType.builder("test_c").name("C").register();
 
-		assertEquals(cn.enaium.fabricpvz.portable.lawn.ZombieType.CUSTOM_ZOMBIE_FIRST + 2, third.zombieType(),
+		assertEquals(ZombieRegistry.FIRST_ZOMBIE_TYPE + 2, third.zombieType(),
 				"a freed slot is not reused, so old references stay valid");
 	}
 
+	// ------------------------------------------------------------------------------------------
+	// Board restore dispatch (ZombieHooks::onRestored)
+	// ------------------------------------------------------------------------------------------
+
+	/**
+	 * A board whose zombie array can be filled by hand. {@code Board}'s constructor is the only way to
+	 * get one and it reads the app's effect system plus the seed-bank image, so those two are stubbed.
+	 */
+	private static Board stubBoard() {
+		LawnApp aApp = new LawnApp();
+		aApp.mEffectSystem = new EffectSystem();
+		aApp.mEffectSystem.effectSystemInitialize();
+
+		MemoryImage aStub = new MemoryImage(aApp);
+		aStub.create(1, 1);
+		Resources.setImageById(ImageID.IMAGE_SEEDBANK, aStub);
+
+		return new Board(aApp);
+	}
+
+	private static Zombie zombieOn(Board theBoard, int theZombieType) {
+		Zombie aZombie = theBoard.mZombies.dataArrayAlloc();
+		aZombie.mZombieType = theZombieType;
+		return aZombie;
+	}
+
 	@Test
-	void behaviourCallbacksRunForTheRegisteredZombie() {
-		List<String> calls = new ArrayList<>();
-		ZombieType type = ZombieType.builder("test_behaviour")
-				.name("Behaviour")
+	void restoringABoardRerunsOnSpawnedAndKeepsTheSavedDamage() {
+		List<Zombie> restored = new ArrayList<>();
+		ZombieType type = ZombieType.builder("test_restored")
+				.name("Restored")
 				.bodyReanimation(ReanimationType.REANIM_ZOMBIE)
-				.onSpawned(zombie -> calls.add("spawned"))
-				.onTick(zombie -> calls.add("tick"))
+				.health(400)
+				.helm(HelmType.HELMTYPE_TRAFFIC_CONE, 370)
+				.onSpawned(restored::add)
 				.register();
 
-		Zombie zombie = new Zombie();
-		zombie.mZombieType = type.zombieType();
+		Board board = stubBoard();
+		Zombie injured = zombieOn(board, type.zombieType());
+		injured.mBodyHealth = 123;
+		injured.mBodyMaxHealth = 400;
+		injured.mHelmType = HelmType.HELMTYPE_TRAFFIC_CONE;
+		injured.mHelmHealth = 20;
+		injured.mHelmMaxHealth = 370;
 
-		// These are the exact calls Zombie::ZombieInitialize and Zombie::Update make.
-		type.definition().mBehaviour.onSpawned(zombie);
-		type.definition().mBehaviour.onUpdate(zombie);
-		assertEquals(List.of("spawned", "tick"), calls);
+		// Neither a zombie of an unregistered type nor a dead one of the registered type may call back.
+		zombieOn(board, cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_NORMAL);
+		Zombie dead = zombieOn(board, type.zombieType());
+		dead.mDead = true;
 
-		ZombieTypeRegistry.updateZombie(zombie);
-		assertEquals(List.of("spawned", "tick", "tick"), calls);
+		ZombieHooks.onRestored(board);
+
+		assertEquals(List.of(injured), restored, "only the live registered zombie is restored");
+		assertEquals(123, injured.mBodyHealth, "a load must not heal an injured zombie");
+		assertEquals(400, injured.mBodyMaxHealth, "the saved maximum is left alone as well");
+		assertEquals(HelmType.HELMTYPE_TRAFFIC_CONE, injured.mHelmType,
+				"the armour the save carried is left alone");
+		assertEquals(20, injured.mHelmHealth);
+		assertEquals(370, injured.mHelmMaxHealth);
+	}
+
+	@Test
+	void restoringSkipsAZombieWhoseRegistrationHasNoBehaviour() {
+		Board board = stubBoard();
+		ZombieType plain = ZombieType.builder("test_plain_restored")
+				.name("Plain")
+				.bodyReanimation(ReanimationType.REANIM_ZOMBIE)
+				.register();
+		zombieOn(board, plain.zombieType());
+
+		// An empty board and a registered zombie without a behaviour: neither may throw.
+		ZombieHooks.onRestored(board);
+		ZombieHooks.onRestored(stubBoard());
 	}
 }

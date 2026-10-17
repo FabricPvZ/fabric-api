@@ -22,14 +22,14 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Tests the jar-in-jar packaging of the aggregator, on the artifact it publishes (the build hands the
- * test the built jar): the four feature modules nested under {@code META-INF/jars/}, the {@code jars}
+ * test the built jar): the five feature modules nested under {@code META-INF/jars/}, the {@code jars}
  * array of the packaged {@code fabric.mod.json} naming exactly them, and every nested jar keeping its
  * own metadata - its own id and version. That last point is what the whole mechanism rests on: Fabric
  * Loader reads a nested mod's id, version and entry points from <em>its</em> {@code fabric.mod.json},
  * so the aggregate may only carry the jars, never rewrite what is inside them.
  *
  * <p>The jar is also asserted to carry nothing else in {@code META-INF/jars/}: the aggregate is the
- * four modules and no fifth jar.
+ * five modules and no sixth jar.
  */
 class AggregatorJarInJarTest {
 
@@ -37,8 +37,8 @@ class AggregatorJarInJarTest {
     private static final String NESTED_DIRECTORY = "META-INF/jars/";
 
     private static final String METADATA = "fabric.mod.json";
-    private static final String VERSION = "1.0.0";
-    private static final List<String> MODULES = List.of("api-base", "api-events", "api-plant", "api-zombie");
+    private static final String VERSION = "1.2.0";
+    private static final List<String> MODULES = List.of("api-base", "api-events", "api-plant", "api-resource", "api-zombie");
 
     /** One {@code {"file": "…"}} entry of the metadata's {@code jars} array. */
     private static final Pattern JAR_FILE = Pattern.compile("\"file\"\\s*:\\s*\"([^\"]+)\"");
@@ -47,7 +47,7 @@ class AggregatorJarInJarTest {
     void theJarCarriesEveryModuleAndNothingElse() throws Exception {
         try (JarFile jar = new JarFile(builtJar().toFile())) {
             assertEquals(nestedJarNames(), sorted(nestedJars(jar)),
-                    "the aggregate jar must carry the four modules under " + NESTED_DIRECTORY);
+                    "the aggregate jar must carry the five modules under " + NESTED_DIRECTORY);
         }
     }
 
@@ -97,7 +97,7 @@ class AggregatorJarInJarTest {
         return names;
     }
 
-    /** What the aggregate is expected to carry: the four modules, each as its own jar. */
+    /** What the aggregate is expected to carry: the five modules, each as its own jar. */
     private static List<String> nestedJarNames() {
         return MODULES.stream().map(module -> NESTED_DIRECTORY + module + "-" + VERSION + ".jar").toList();
     }
