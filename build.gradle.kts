@@ -10,7 +10,7 @@ plugins {
     // project is not a mod project of the toolchain - it has no game code, no `pvz` distribution, no
     // `runClient` and its own publication - so it applies nothing and asks the plugin only for its
     // classes, which is what this declaration puts on the build script class path.
-    id("cn.enaium.fabricpvz.loom") version "1.0.6" apply false
+    id("cn.enaium.fabricpvz.loom") version "1.0.7" apply false
 }
 
 group = "cn.enaium.fabricpvz"
