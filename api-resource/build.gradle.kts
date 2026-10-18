@@ -30,7 +30,7 @@ dependencies {
 
     // Compile-time only: the Mixin annotations the resource-reload Mixin is written against. The real
     // Mixin engine, with the same API, is supplied by Fabric Loader at runtime (through
-    // fabric-provider), so this artifact must never be shipped in the module jar.
+    // launch libraries), so this artifact must never be shipped in the module jar.
     compileOnly("net.fabricmc:sponge-mixin:0.17.4+mixin.0.8.7")
 
     testImplementation(platform(libs.junit.bom))

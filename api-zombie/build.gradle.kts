@@ -21,7 +21,7 @@ dependencies {
     testImplementation("cn.enaium.fabricpvz:pvz-portable:1.2.1")
 
     // Compile-time only: the Mixin annotations the dispatch Mixins are written against. The real Mixin
-    // engine, with the same API, is supplied by Fabric Loader at runtime (through fabric-provider), so
+    // engine, with the same API, is supplied by Fabric Loader at runtime (from the game's launch libraries), so
     // this artifact must never be shipped in the module jar.
     compileOnly("net.fabricmc:sponge-mixin:0.17.4+mixin.0.8.7")
 
