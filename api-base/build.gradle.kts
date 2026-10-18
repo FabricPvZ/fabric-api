@@ -25,13 +25,13 @@ dependencies {
     // No event-bus dependency: our own Fabric-API-shaped Event/EventFactory live in this module, in
     // cn.enaium.fabricpvz.api.event. The upstream Fabric API base module is not usable outside a Loom
     // environment from its 0.4.0 release on, and only its oldest 0.3.0 jar is pure JDK, so the API
-    // does not depend on it; see docs/VERIFICATION.md §27 (the audit) and §28 (the switch).
+    // does not depend on it; see ../verification/VERIFICATION.md §27 (the audit) and §28 (the switch).
 
     // Fabric parity: fabric-api depends on the game it extends, and the game depends on this API at
     // runtime, so the game is a compile-only dependency of every API module (it is never published
     // in the POM, which keeps the game -> api -> game cycle out of the dependency graph).
-    compileOnly("cn.enaium.fabricpvz:pvz-portable:1.1.0")
-    testImplementation("cn.enaium.fabricpvz:pvz-portable:1.1.0")
+    compileOnly("cn.enaium.fabricpvz:pvz-portable:1.2.1")
+    testImplementation("cn.enaium.fabricpvz:pvz-portable:1.2.1")
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

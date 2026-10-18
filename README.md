@@ -32,7 +32,8 @@ batch adds - all of them "the game's own value until a mod sets one":
 `PlantOverrides.rules()` / `ZombieOverrides.rules()` are the diagnostics views of the whole-game rules,
 the mirror of `registered()`. The two rules that are a rewrite of a *method* rather than an answer - the
 95 Edition's bite (8 a chew, and the two transformations on it) and its seed-packet rewrite - are the
-mod's own `LawnHooks` implementation rather than an API knob; see `docs/guide/events.md`.
+mod's own `LawnHooks` implementation rather than an API knob; see the mod development site
+(`../docs/`), chapter *Events and lifecycle*.
 
 Two names exist in both modules: `ZombieCombatMixin` (api-zombie's answers the shield flags, api-plant's
 answers the square-squash comparison), and each module's `ZombieSmashMixin`/`ZombieCrushMixin` lives in
@@ -78,7 +79,7 @@ event classes compiled against Minecraft/Guava — `Event` / `EventFactory` / `A
 `MapMaker`, and `TriState` / `EventResult` use `net/minecraft/util/StringRepresentable`. `0.3.0` was
 the last pure-JDK release, and pinning an old version was not wanted either, so the API has no Fabric
 API event-bus dependency at all (and the loader-resolved mod list no longer contains it). See
-`docs/VERIFICATION.md` §27 for the per-version scan and §28 for our bus and its tests.
+`../verification/VERIFICATION.md` §27 for the per-version scan and §28 for our bus and its tests.
 
 **Where the content comes from.** The game itself has no idea what a mod is: it owns a definition table
 per content kind (`Plant::gPlantDefs`, `Zombie::gZombieDefs`), each as wide as its id space

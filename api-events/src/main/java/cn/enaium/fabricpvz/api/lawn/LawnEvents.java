@@ -12,7 +12,7 @@ import cn.enaium.fabricpvz.api.event.EventFactory;
 /**
  * Fabric-style events for gameplay. Fired by the game's
  * {@code cn.enaium.fabricpvz.portable.lawn.hooks.LawnHooks}, which the game calls at the sites
- * documented in {@code docs/research/03-board-core.md §7.4}; the bridge is installed by
+ * documented in {@code ../verification/research/03-board-core.md §7.4}; the bridge is installed by
  * {@link LawnHooksBridge} from this module's {@code main} entry point.
  *
  * <p>The events are Fabric-shaped ({@link Event} from {@code cn.enaium.fabricpvz.api.event}, our own

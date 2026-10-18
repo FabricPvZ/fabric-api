@@ -21,8 +21,8 @@ dependencies {
     compileOnly(libs.fabric.loader)
     testImplementation(libs.fabric.loader)
 
-    compileOnly("cn.enaium.fabricpvz:pvz-portable:1.1.0")
-    testImplementation("cn.enaium.fabricpvz:pvz-portable:1.1.0")
+    compileOnly("cn.enaium.fabricpvz:pvz-portable:1.2.1")
+    testImplementation("cn.enaium.fabricpvz:pvz-portable:1.2.1")
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

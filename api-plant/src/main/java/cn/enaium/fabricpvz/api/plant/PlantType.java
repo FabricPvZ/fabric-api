@@ -176,7 +176,7 @@ public final class PlantType {
          * <p>Every type the game knows can be fired, including the ones upstream only ever produced by
          * converting another projectile: a fire pea is drawn from the flame reanimation the torchwood
          * conversion attaches, and the game gives a directly fired one the same body (see
-         * {@code docs/VERIFICATION.md} §46).
+         * {@code ../verification/VERIFICATION.md} §46).
          *
          * @param theProjectileType a {@code ProjectileType} value
          */
