@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "fabric-api",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "name": "PvZ Fabric API",
   "description": "Aggregator of the PvZ Fabric API modules: event bus, lifecycle/gameplay events and custom content registries. Mods depend on this id; the feature modules are separate jars with their own ids.",
   "authors": [

@@ -1,5 +1,6 @@
 package cn.enaium.fabricpvz.api.zombie.mixin;
 
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -46,5 +47,21 @@ public abstract class ZombieStatusMixin {
         if (ZombieHooks.removeColdEffects(theZombie)) {
             ci.cancel();
         }
+    }
+
+    /**
+     * Applies the butter cold of
+     * {@link cn.enaium.fabricpvz.api.zombie.ZombieOverrides#butterCold(int, int)} where
+     * {@code Zombie::ApplyButter} (Zombie.cpp:8517) writes the butter counter - behind the guards that
+     * keep an unfreezable zombie out, and before the animation speed the end of the method derives from
+     * the cold counters, so the slowed animation that follows is the one the rule implies.
+     */
+    @Inject(method = "applyButter(Lcn/enaium/fabricpvz/portable/lawn/Zombie;)V",
+            at = @At(value = "FIELD",
+                    target = "Lcn/enaium/fabricpvz/portable/lawn/Zombie;mButteredCounter:I",
+                    opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER))
+    private static void fabricpvz$butterCold(cn.enaium.fabricpvz.portable.lawn.Zombie theZombie,
+            CallbackInfo ci) {
+        ZombieHooks.applyButterCold(theZombie);
     }
 }

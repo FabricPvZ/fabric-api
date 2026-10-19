@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "cn.enaium.fabricpvz"
-version = "1.2.0"
+version = "1.2.1"
 
 java {
     toolchain {
@@ -66,7 +66,7 @@ mavenPublishing {
     publishToMavenCentral(true)
     signAllPublications()
 
-    coordinates("cn.enaium.fabricpvz", "api-base", "1.2.0")
+    coordinates("cn.enaium.fabricpvz", "api-base", "1.2.1")
 
     pom {
         name.set("api-base")

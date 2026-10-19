@@ -14,6 +14,8 @@ import cn.enaium.fabricpvz.api.plant.BoardOverrides;
 import cn.enaium.fabricpvz.api.plant.PlantHooks;
 import cn.enaium.fabricpvz.portable.lawn.Board;
 import cn.enaium.fabricpvz.portable.lawn.LawnApp;
+import cn.enaium.fabricpvz.portable.lawn.LawnMower;
+import cn.enaium.fabricpvz.portable.lawn.LawnMowerState;
 import cn.enaium.fabricpvz.portable.lawn.NotRecommend;
 import cn.enaium.fabricpvz.portable.lawn.SeedType;
 
@@ -162,5 +164,24 @@ public abstract class BoardMixin {
     private void fabricpvz$modeBackground(CallbackInfo ci) {
         Board aBoard = (Board) (Object) this;
         aBoard.mBackground = BoardOverrides.modeBackgroundOverride(aBoard.mApp.mGameMode, aBoard.mBackground);
+    }
+
+    /**
+     * The mower trigger of {@link BoardOverrides#superMowerTriggersMowers(boolean)}: right after
+     * {@code Board::SetSuperMowerMode} (Board.cpp:7519) has written the flag - the point 95 patched in
+     * the retail binary - every mower of the board is set to {@code MOWER_TRIGGERED}.
+     *
+     * <p>The injection is at the end of the method, so the game's own loop (which hands each mower the
+     * super art) has already run and the state write is the last word; with no rule registered nothing
+     * is written.
+     */
+    @Inject(method = "setSuperMowerMode(Z)V", at = @At("TAIL"))
+    private void fabricpvz$superMowerTriggers(boolean theEnableSuperMower, CallbackInfo ci) {
+        if (!BoardOverrides.superMowerTriggersMowers()) {
+            return;
+        }
+        for (LawnMower aLawnMower : ((Board) (Object) this).mLawnMowers) {
+            aLawnMower.mMowerState = LawnMowerState.MOWER_TRIGGERED;
+        }
     }
 }

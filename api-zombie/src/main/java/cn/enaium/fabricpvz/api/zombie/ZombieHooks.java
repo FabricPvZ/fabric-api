@@ -24,6 +24,12 @@ import cn.enaium.fabricpvz.portable.sexy.Rect;
  */
 public final class ZombieHooks {
 
+    /** The game's own clamp: a body at or above this health takes the flat 1800 instead of burning. */
+    private static final int BURN_CLAMP_BODY_HEALTH = 1800;
+
+    /** The flags the game's clamp passes to {@code Zombie::TakeDamage} (18, {@code Zombie.cpp:8612}). */
+    private static final int BURN_CLAMP_DAMAGE_FLAGS = 18;
+
     private ZombieHooks() {
     }
 
@@ -254,6 +260,111 @@ public final class ZombieHooks {
     public static Boolean canGoInPool(int zombieType) {
         CustomZombieType entry = ZombieRegistry.entry(zombieType);
         return entry == null ? null : entry.mCanGoInPool;
+    }
+
+    /**
+     * Applies the cold of {@link ZombieOverrides#butterCold(int, int)} at the point
+     * {@code Zombie::ApplyButter} (Zombie.cpp:8517) writes the butter counter. With no rule registered
+     * nothing is written and the hit stays the game's own butter.
+     *
+     * @param theZombie the zombie the butter hit
+     */
+    public static void applyButterCold(Zombie theZombie) {
+        Integer aIceTrapCounter = ZombieOverrides.butterIceTrapCounter();
+        if (aIceTrapCounter == null) {
+            return;
+        }
+        theZombie.mIceTrapCounter = aIceTrapCounter;
+        theZombie.mChilledCounter = ZombieOverrides.butterChilledCounter();
+    }
+
+    /**
+     * What {@code Plant::BurnRow} (Plant.cpp:4226) does to one zombie it covers, in place of the game's
+     * {@code Zombie::RemoveColdEffects}: with {@link ZombieOverrides#burnRowCold(int, int, int)}
+     * registered the zombie keeps its cold effects and gets the counters of the rule (and the
+     * animation speed they imply) instead of having them cleared.
+     *
+     * @param theZombie the zombie the row's burn covers
+     */
+    public static void burnRowColdEffects(Zombie theZombie) {
+        Integer aIceTrapCounter = ZombieOverrides.burnRowIceTrapCounter();
+        if (aIceTrapCounter == null) {
+            theZombie.removeColdEffects();
+            return;
+        }
+        theZombie.mIceTrapCounter = aIceTrapCounter;
+        theZombie.mChilledCounter = ZombieOverrides.burnRowChilledCounter();
+        theZombie.updateAnimSpeed();
+    }
+
+    /**
+     * The burn of the same zombie: {@code Zombie::ApplyBurn} as the game runs it, followed by the
+     * damage of {@link ZombieOverrides#burnRowCold(int, int, int)}. A zombie whose burn would be the
+     * clamp's flat 1800 instead burns for nothing and takes the rule's damage alone, which is the
+     * damage the row deals.
+     *
+     * @param theZombie the zombie the row's burn covers
+     */
+    public static void burnRowApplyBurn(Zombie theZombie) {
+        Integer aDamage = ZombieOverrides.burnRowDamage();
+        if (aDamage == null) {
+            theZombie.applyBurn();
+            return;
+        }
+        if (wouldTakeTheBurnClamp(theZombie)) {
+            // The clamp is the whole of the burn for this zombie, so what the row deals is the rule's
+            // damage: the game's own call is made with nothing in it, which is what 95's patched code
+            // does (the wrapper it put on the clamp call zeroes that damage).
+            theZombie.takeDamage(0, BURN_CLAMP_DAMAGE_FLAGS);
+        } else {
+            theZombie.applyBurn();
+        }
+        theZombie.takeDamage(aDamage, 0);
+    }
+
+    /**
+     * Whether {@code Zombie::ApplyBurn}'s health clamp is the whole of the burn for a zombie - which is
+     * the state the burn row replaces the damage of.
+     *
+     * <p>The predicate is the one the burn itself uses: the total-health clamp a rebalance registered
+     * with {@link ZombieOverrides#burnImmunity(int, int...)} when there is one (that rule replaces the
+     * game's), and the game's own body-health one otherwise.
+     */
+    private static boolean wouldTakeTheBurnClamp(Zombie theZombie) {
+        int aThreshold = ZombieOverrides.burnImmunityTotalHealth();
+        if (aThreshold > 0) {
+            return ZombieOverrides.isBurnImmunePhase(theZombie.mZombiePhase)
+                    || theZombie.mBodyHealth + theZombie.mHelmHealth + theZombie.mShieldHealth >= aThreshold;
+        }
+        return theZombie.mBodyHealth >= BURN_CLAMP_BODY_HEALTH
+                || theZombie.mZombieType == cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_BOSS;
+    }
+
+    /**
+     * The yeti's per-type update of {@code Zombie::UpdateActions} (Zombie.cpp:4428): the game calls
+     * {@code Zombie::UpdateYeti} for a yeti, and where
+     * {@link ZombieOverrides#yetiUpdateOnFlag(boolean)} is set that call is dropped here and made for
+     * the flag zombie instead (see {@link #updateYetiForFlag(Zombie)}).
+     *
+     * @param theZombie the zombie being dispatched
+     */
+    public static void updateYeti(Zombie theZombie) {
+        if (!ZombieOverrides.yetiUpdateOnFlag()) {
+            theZombie.updateYeti();
+        }
+    }
+
+    /**
+     * The other half of {@link #updateYeti(Zombie)}: where a mod moved the yeti's per-type update to
+     * the flag zombie, it runs here for a flag zombie, at the end of the dispatch.
+     *
+     * @param theZombie the zombie being dispatched
+     */
+    public static void updateYetiForFlag(Zombie theZombie) {
+        if (ZombieOverrides.yetiUpdateOnFlag()
+                && theZombie.mZombieType == cn.enaium.fabricpvz.portable.lawn.ZombieType.ZOMBIE_FLAG) {
+            theZombie.updateYeti();
+        }
     }
 
     /**

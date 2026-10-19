@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "cn.enaium.fabricpvz"
-version = "1.2.0"
+version = "1.2.1"
 
 java {
     toolchain {
@@ -29,7 +29,7 @@ val apiModules = listOf(project(":api-base"), project(":api-events"), project(":
 
 // The jars the aggregate carries inside itself (Fabric Loom's `include(...)`): the toolchain's
 // mechanism, so the aggregator does not hand-roll a zip: they are nested into
-// build/libs/fabric-api-1.2.0.jar under `META-INF/jars/` and listed in its packaged
+// build/libs/fabric-api-1.2.1.jar under `META-INF/jars/` and listed in its packaged
 // `fabric.mod.json`, from where Fabric Loader loads them as mods of their own - with their own ids,
 // versions and entry points, exactly as Fabric API ships its modules.
 val included = JarInJar.configuration(project)
@@ -91,7 +91,7 @@ mavenPublishing {
     publishToMavenCentral(true)
     signAllPublications()
 
-    coordinates("cn.enaium.fabricpvz", "fabric-api", "1.2.0")
+    coordinates("cn.enaium.fabricpvz", "fabric-api", "1.2.1")
 
     pom {
         name.set("fabric-api")

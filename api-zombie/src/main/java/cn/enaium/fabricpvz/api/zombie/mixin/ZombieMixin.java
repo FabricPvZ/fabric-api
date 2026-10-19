@@ -3,6 +3,7 @@ package cn.enaium.fabricpvz.api.zombie.mixin;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -61,5 +62,26 @@ public abstract class ZombieMixin {
     @Inject(method = "startMindControlled()V", at = @At("RETURN"))
     private void fabricpvz$onMindControlled(CallbackInfo ci) {
         ZombieHooks.onMindControlled((Zombie) (Object) this);
+    }
+
+    /**
+     * The yeti's branch of {@code Zombie::UpdateActions} (Zombie.cpp:4428): the game calls
+     * {@code Zombie::UpdateYeti} for a yeti, and {@link ZombieHooks#updateYeti(Zombie)} drops that call
+     * where a mod moved it to the flag zombie (ZOMBIE_YETI(19) becomes ZOMBIE_FLAG(1) at the comparison
+     * 95 patched in the dispatch).
+     */
+    @Redirect(method = "updateActions()V", at = @At(value = "INVOKE",
+            target = "Lcn/enaium/fabricpvz/portable/lawn/Zombie;updateYeti()V"))
+    private void fabricpvz$yetiDispatch(Zombie theZombie) {
+        ZombieHooks.updateYeti(theZombie);
+    }
+
+    /**
+     * The other end of the same dispatch: where a mod moved the yeti's per-type update to the flag
+     * zombie, the dispatch has no branch for it, so it runs here, after the game's own.
+     */
+    @Inject(method = "updateActions()V", at = @At("TAIL"))
+    private void fabricpvz$yetiForFlag(CallbackInfo ci) {
+        ZombieHooks.updateYetiForFlag((Zombie) (Object) this);
     }
 }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "api-resource",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "name": "PvZ Fabric API Resources",
   "description": "Put a mod's own images into the game's resource table: image slots the game never draws, the game's own seed-packet/cached-frame painters, and per-track reanimation recolouring.",
   "authors": [

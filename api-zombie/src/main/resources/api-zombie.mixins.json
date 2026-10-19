@@ -9,7 +9,8 @@
     "ZombieStatusMixin",
     "ZombieCombatMixin",
     "BoardMixin",
-    "AlmanacMixin"
+    "AlmanacMixin",
+    "PlantBurnRowMixin"
   ],
   "injectors": {
     "defaultRequire": 1

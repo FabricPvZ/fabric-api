@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 class AggregatorMetadataTest {
 
 	private static final String MOD_ID = "fabric-api";
-	private static final String VERSION = "1.2.0";
+	private static final String VERSION = "1.2.1";
 	private static final List<String> MODULES =
 			List.of("api-base", "api-events", "api-plant", "api-resource", "api-zombie");
 

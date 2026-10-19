@@ -70,6 +70,24 @@ public final class ZombieOverrides {
     /** Whether damage always goes through a shield, skipping both damage-flag arms. */
     private static Boolean sShieldAlwaysAbsorbs;
 
+    /** The ice-trap counter a butter hit writes, or {@code null} for the game's own behaviour. */
+    private static Integer sButterIceTrapCounter;
+
+    /** The chill counter a butter hit writes (only meaningful with the counter above). */
+    private static Integer sButterChilledCounter;
+
+    /** The ice-trap counter {@code Plant::BurnRow} writes in place of removing the cold effects. */
+    private static Integer sBurnRowIceTrapCounter;
+
+    /** The chill counter {@code Plant::BurnRow} writes. */
+    private static Integer sBurnRowChilledCounter;
+
+    /** The damage {@code Plant::BurnRow} adds after the burn. */
+    private static Integer sBurnRowDamage;
+
+    /** Whether the per-type update the game runs for the yeti runs for the flag zombie instead. */
+    private static Boolean sYetiUpdateOnFlag;
+
     private ZombieOverrides() {
     }
 
@@ -117,6 +135,12 @@ public final class ZombieOverrides {
             sBurnImmunityPhases = new int[0];
             sColdRemovalChilledCounter = null;
             sShieldAlwaysAbsorbs = null;
+            sButterIceTrapCounter = null;
+            sButterChilledCounter = null;
+            sBurnRowIceTrapCounter = null;
+            sBurnRowChilledCounter = null;
+            sBurnRowDamage = null;
+            sYetiUpdateOnFlag = null;
         }
     }
 
@@ -299,6 +323,116 @@ public final class ZombieOverrides {
     public static boolean shieldAlwaysAbsorbs() {
         synchronized (LOCK) {
             return Boolean.TRUE.equals(sShieldAlwaysAbsorbs);
+        }
+    }
+
+    /**
+     * The cold a butter hit carries: {@code Zombie::ApplyButter} (Zombie.cpp:8517) writes the butter
+     * counter, and a rebalance may have the same hit freeze the zombie outright - through whatever
+     * armour it still wears.
+     *
+     * <p>The counters are written where the game writes the butter counter: after the guards that keep
+     * an unfreezable zombie out, and before the animation-speed update at the end of the method, so the
+     * slowed animation that follows is the one the new counters imply.
+     *
+     * @param theIceTrapCounter the ice-trap counter to write, {@code 0} or more
+     * @param theChilledCounter the chill counter to write, {@code 0} or more
+     */
+    public static void butterCold(int theIceTrapCounter, int theChilledCounter) {
+        if (theIceTrapCounter < 0 || theChilledCounter < 0) {
+            throw new IllegalArgumentException(
+                    "A cold counter cannot be negative: " + theIceTrapCounter + " / " + theChilledCounter);
+        }
+        synchronized (LOCK) {
+            sButterIceTrapCounter = theIceTrapCounter;
+            sButterChilledCounter = theChilledCounter;
+            RULES.put("butterIceTrapCounter", theIceTrapCounter);
+            RULES.put("butterChilledCounter", theChilledCounter);
+        }
+    }
+
+    /** @return the ice-trap counter a butter hit writes, or {@code null} for the game's own. */
+    public static Integer butterIceTrapCounter() {
+        synchronized (LOCK) {
+            return sButterIceTrapCounter;
+        }
+    }
+
+    /** @return the chill counter a butter hit writes, or {@code null} for the game's own. */
+    public static Integer butterChilledCounter() {
+        synchronized (LOCK) {
+            return sButterChilledCounter;
+        }
+    }
+
+    /**
+     * What {@code Plant::BurnRow} (Plant.cpp:4226) does to every zombie it covers: the game removes the
+     * zombie's cold effects, burns it and lets the burn's own clamp deal its 1800; a rebalance may
+     * freeze it hard instead, add damage of its own, and drop the clamp's damage for this call.
+     *
+     * <p>With the rule set the row's zombies keep their cold effects and get the counters registered
+     * here, the burn keeps its transformation (a zombie below its clamp burns away as it always did)
+     * but no longer deals the clamp damage, and the damage registered here is dealt after the burn.
+     *
+     * @param theIceTrapCounter the ice-trap counter to write, {@code 0} or more
+     * @param theChilledCounter the chill counter to write, {@code 0} or more
+     * @param theDamage the damage to deal after the burn, {@code 0} or more
+     */
+    public static void burnRowCold(int theIceTrapCounter, int theChilledCounter, int theDamage) {
+        if (theIceTrapCounter < 0 || theChilledCounter < 0 || theDamage < 0) {
+            throw new IllegalArgumentException("The burn row's cold and damage cannot be negative: "
+                    + theIceTrapCounter + " / " + theChilledCounter + " / " + theDamage);
+        }
+        synchronized (LOCK) {
+            sBurnRowIceTrapCounter = theIceTrapCounter;
+            sBurnRowChilledCounter = theChilledCounter;
+            sBurnRowDamage = theDamage;
+            RULES.put("burnRowIceTrapCounter", theIceTrapCounter);
+            RULES.put("burnRowChilledCounter", theChilledCounter);
+            RULES.put("burnRowDamage", theDamage);
+        }
+    }
+
+    /** @return the ice-trap counter the burn row writes, or {@code null} for the game's own. */
+    public static Integer burnRowIceTrapCounter() {
+        synchronized (LOCK) {
+            return sBurnRowIceTrapCounter;
+        }
+    }
+
+    /** @return the chill counter the burn row writes, or {@code null} for the game's own. */
+    public static Integer burnRowChilledCounter() {
+        synchronized (LOCK) {
+            return sBurnRowChilledCounter;
+        }
+    }
+
+    /** @return the damage the burn row adds, or {@code null} for the game's own. */
+    public static Integer burnRowDamage() {
+        synchronized (LOCK) {
+            return sBurnRowDamage;
+        }
+    }
+
+    /**
+     * Whether the per-type update the game runs for the yeti runs for the flag zombie instead:
+     * {@code Zombie::UpdateActions} (Zombie.cpp:4428) dispatches on {@code mZombieType}, and moving its
+     * {@code Zombie::UpdateYeti} branch from {@code ZOMBIE_YETI} to {@code ZOMBIE_FLAG} leaves the yeti
+     * on the plain zombie's behaviour while the flag zombie takes the yeti's phase change.
+     *
+     * @param theOnFlag true to run the yeti's per-type update for the flag zombie instead of the yeti
+     */
+    public static void yetiUpdateOnFlag(boolean theOnFlag) {
+        synchronized (LOCK) {
+            sYetiUpdateOnFlag = theOnFlag;
+            RULES.put("yetiUpdateOnFlag", theOnFlag);
+        }
+    }
+
+    /** @return whether the yeti's per-type update runs for the flag zombie; false until a mod says so. */
+    public static boolean yetiUpdateOnFlag() {
+        synchronized (LOCK) {
+            return Boolean.TRUE.equals(sYetiUpdateOnFlag);
         }
     }
 

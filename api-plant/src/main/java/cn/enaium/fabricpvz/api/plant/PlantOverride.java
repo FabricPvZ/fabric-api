@@ -77,6 +77,9 @@ public final class PlantOverride {
     private Integer mSpawnCountdown;
     private Integer mBiteInsteadOfEatZombieType;
     private Integer mDigestCountdown;
+
+    /** The pixels the plant's attack rectangle is widened by, or null for the game's own width. */
+    private Integer mAttackRectExtraWidth;
     private Integer mSpikeRockHitDamage;
     private Integer mSpikeRockHideBigSpike3At;
     private Integer mSpikeRockHideBigSpike2At;
@@ -210,6 +213,25 @@ public final class PlantOverride {
     public PlantOverride digestCountdown(int theCentiseconds) {
         requireNonNegative(theCentiseconds, "digest countdown");
         mDigestCountdown = theCentiseconds;
+        return this;
+    }
+
+    /**
+     * How many pixels the plant's attack rectangle is widened by - the rectangle
+     * {@code Plant::GetPlantAttackRect} answers with, which is what the game's own target searches
+     * measure a zombie against, and which the game builds per seed type with that plant's own reach.
+     *
+     * <p>Widening it moves the plant's reach: the squash's rectangle ends 45 pixels ahead of it in the
+     * game, and its target search accepts a zombie whose rectangle is up to another 70 pixels beyond -
+     * so the game reaches 115 pixels (one cell and a half, which a player reads as one), while the 65
+     * pixels this adds put the rectangle's edge at 110 and the search's far end at 180, i.e. the two
+     * cells (160) the 95 edition gives the squash, and still short of three.
+     *
+     * @param theExtraWidth the pixels to widen the rectangle by, {@code 0} or more
+     */
+    public PlantOverride attackRectExtraWidth(int theExtraWidth) {
+        requireNonNegative(theExtraWidth, "attack rectangle widening");
+        mAttackRectExtraWidth = theExtraWidth;
         return this;
     }
 
@@ -349,6 +371,11 @@ public final class PlantOverride {
     /** @return the chomper's digesting pause, the game's own when nobody set one. */
     public int digestCountdown() {
         return mDigestCountdown == null ? DEFAULT_CHOMPER_DIGEST_COUNTDOWN : mDigestCountdown;
+    }
+
+    /** @return the widening {@link #attackRectExtraWidth(int)} registered, or {@code 0} for the game's own. */
+    public int attackRectExtraWidth() {
+        return mAttackRectExtraWidth == null ? 0 : mAttackRectExtraWidth;
     }
 
     /** @return what one hit takes off the spikerock, the game's own when nobody set one. */

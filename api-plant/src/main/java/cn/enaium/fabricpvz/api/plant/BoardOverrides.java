@@ -72,6 +72,9 @@ public final class BoardOverrides {
     /** game mode -> the background the mode is played on instead of the game's own. */
     private static final Map<Integer, Integer> MODE_BACKGROUNDS = new LinkedHashMap<>();
 
+    /** Whether the super-mower toggle also sets every mower of the board to {@code MOWER_TRIGGERED}. */
+    private static Boolean sSuperMowerTriggersMowers;
+
     private BoardOverrides() {
     }
 
@@ -1077,7 +1080,34 @@ public final class BoardOverrides {
             CONVEYOR_SEEDS.clear();
             WAVE_COUNTS.clear();
             MODE_BACKGROUNDS.clear();
+            sSuperMowerTriggersMowers = null;
             SET.clear();
+        }
+    }
+
+    /**
+     * Whether toggling the game's "super mower" cheat also triggers every mower: 95 patches
+     * {@code Board::SetSuperMowerMode} (Board.cpp:7519) so that, right where the game writes
+     * {@code mSuperMowerMode}, the mowers of the board get {@code MOWER_TRIGGERED} - the toggle becomes
+     * "make this lane's mower drive off, super-charged" instead of only re-skinning them.
+     *
+     * <p>The game's own loop (which asks each mower to switch to the super art) still runs afterwards,
+     * and the mowers are written whether the toggle is being turned on or off - that is what the
+     * patched code does.
+     *
+     * @param theTriggers true to trigger every mower when the super-mower mode is toggled
+     */
+    public static void superMowerTriggersMowers(boolean theTriggers) {
+        synchronized (LOCK) {
+            sSuperMowerTriggersMowers = theTriggers;
+            SET.put("superMowerTriggersMowers", theTriggers);
+        }
+    }
+
+    /** @return whether the super-mower toggle triggers every mower; false until a mod says otherwise. */
+    public static boolean superMowerTriggersMowers() {
+        synchronized (LOCK) {
+            return Boolean.TRUE.equals(sSuperMowerTriggersMowers);
         }
     }
 

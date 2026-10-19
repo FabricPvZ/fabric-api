@@ -60,6 +60,7 @@ public final class PlantOverrides {
     /** The seed type {@code Plant::UpdateShooter} fires its {@code mLaunchCounter == 50} shot for. */
     private static Integer sExtraFireSeedType;
 
+
     private PlantOverrides() {
     }
 
@@ -272,6 +273,12 @@ public final class PlantOverrides {
      * @param theSeedType a {@code SeedType} value
      * @return the digesting pause in centiseconds
      */
+    /** @return the attack-rectangle widening of a seed type, or {@code 0} for the game's own. */
+    public static int attackRectExtraWidth(int theSeedType) {
+        PlantOverride aOverride = BY_SEED_TYPE.get(theSeedType);
+        return aOverride == null ? 0 : aOverride.attackRectExtraWidth();
+    }
+
     public static int digestCountdown(int theSeedType) {
         PlantOverride aOverride = get(theSeedType);
         return aOverride == null ? PlantOverride.DEFAULT_CHOMPER_DIGEST_COUNTDOWN : aOverride.digestCountdown();

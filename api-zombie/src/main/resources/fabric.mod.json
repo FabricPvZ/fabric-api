@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "api-zombie",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "name": "PvZ Fabric API Zombies",
   "description": "Register custom zombies: zombie type, name, body/head reanimations and behaviour hooks.",
   "authors": [

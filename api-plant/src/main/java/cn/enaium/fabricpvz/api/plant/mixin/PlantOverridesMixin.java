@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 import cn.enaium.fabricpvz.api.plant.PlantOverride;
@@ -16,6 +17,7 @@ import cn.enaium.fabricpvz.api.plant.PlantOverrides;
 import cn.enaium.fabricpvz.portable.lawn.Board;
 import cn.enaium.fabricpvz.portable.lawn.Coin;
 import cn.enaium.fabricpvz.portable.lawn.Plant;
+import cn.enaium.fabricpvz.portable.sexy.Rect;
 
 /**
  * Applies the {@link PlantOverrides} a mod registered at the game's own per-seed read points.
@@ -53,6 +55,7 @@ public abstract class PlantOverridesMixin {
 
     @Shadow
     public int mSeedType;
+
 
     /**
      * Applies the registered overrides at the end of {@code Plant::PlantInitialize}, on top of
@@ -165,5 +168,21 @@ public abstract class PlantOverridesMixin {
                     target = "Lcn/enaium/fabricpvz/portable/lawn/Board;addCoin(IIII)Lcn/enaium/fabricpvz/portable/lawn/Coin;"))
     private Coin fabricpvz$producedCoin(Board theBoard, int theX, int theY, int theCoinType, int theCoinMotion) {
         return theBoard.addCoin(theX, theY, PlantOverrides.producedCoin(mSeedType, theCoinType), theCoinMotion);
+    }
+
+
+    /**
+     * The widening of {@link PlantOverrides#attackRectExtraWidth(int)}: the attack rectangle the game
+     * built for this plant is widened by the registered pixels, which is what moves the plant's reach
+     * (see the API for the arithmetic of one plant). With nothing registered the rectangle is left
+     * exactly as the game built it.
+     */
+    @Inject(method = "getPlantAttackRect(I)Lcn/enaium/fabricpvz/portable/sexy/Rect;", at = @At("RETURN"))
+    private void fabricpvz$attackRectExtraWidth(int thePlantWeapon, CallbackInfoReturnable<Rect> cir) {
+        int aExtraWidth = PlantOverrides.attackRectExtraWidth(mSeedType);
+        Rect aRect = cir.getReturnValue();
+        if (aExtraWidth > 0 && aRect != null) {
+            aRect.mWidth += aExtraWidth;
+        }
     }
 }
