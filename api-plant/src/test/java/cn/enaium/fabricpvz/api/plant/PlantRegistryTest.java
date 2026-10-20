@@ -68,6 +68,48 @@ class PlantRegistryTest {
 	}
 
 	@Test
+	void customSeedTypesAndTheirInvisibilityAreServedToTheGame() {
+		PlantType type = registerPeaPlus();
+		assertTrue(PlantHooks.isCustom(type.seedType()));
+		assertFalse(PlantHooks.isCustom(SeedType.SEED_PEASHOOTER));
+
+		// A plant declares whether it draws nothing of its own; a plant that says nothing draws as usual.
+		Plant plant = new Plant();
+		plant.mSeedType = type.seedType();
+		assertFalse(PlantHooks.invisible(plant));
+
+		PlantType invisible = PlantType.builder("test_invisible").name("Invisible").invisible(true).register();
+		plant.mSeedType = invisible.seedType();
+		assertTrue(PlantHooks.invisible(plant));
+		assertTrue(invisible.definition().mInvisible);
+		assertTrue(PlantHooks.suppressesDraw(plant), "an invisible plant without a body reanimation is not drawn");
+
+		Plant upstream = new Plant();
+		upstream.mSeedType = SeedType.SEED_PEASHOOTER;
+		assertFalse(PlantHooks.invisible(upstream));
+		assertFalse(PlantHooks.suppressesDraw(upstream), "upstream plants keep the game's own draw");
+	}
+
+	@Test
+	void theSeedArtOfARegisteredPlantIsItsPacketArt() {
+		MemoryImage art = new MemoryImage(new LawnApp());
+		art.create(1, 1);
+		PlantType type = PlantType.builder("test_art")
+				.name("Art")
+				.packetArt(() -> art)
+				.invisible(true)
+				.register();
+
+		assertSame(art, PlantHooks.image(type.seedType()),
+				"the seed-art paths draw the mod's own packet art");
+		assertNull(PlantHooks.image(SeedType.SEED_PEASHOOTER), "upstream seeds keep the game's table");
+
+		// No pinned art at all: nothing to draw, and the draw of the plant is suppressed.
+		PlantType plain = PlantType.builder("test_no_art").name("No Art").register();
+		assertNull(PlantHooks.image(plain.seedType()));
+	}
+
+	@Test
 	void burstIsTwoOrFourAndDefaultsToOne() {
 		// Default: one shot, and burstOf answers 0 for anything nobody registered.
 		PlantType plain = registerPeaPlus();

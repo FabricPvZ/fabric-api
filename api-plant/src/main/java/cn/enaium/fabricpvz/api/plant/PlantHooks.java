@@ -6,6 +6,7 @@ import cn.enaium.fabricpvz.portable.lawn.Plant;
 import cn.enaium.fabricpvz.portable.lawn.PlantOnBungeeState;
 import cn.enaium.fabricpvz.portable.lawn.PlantWeapon;
 import cn.enaium.fabricpvz.portable.lawn.Projectile;
+import cn.enaium.fabricpvz.portable.lawn.ReanimationID;
 import cn.enaium.fabricpvz.portable.lawn.Resources;
 import cn.enaium.fabricpvz.portable.lawn.SeedType;
 import cn.enaium.fabricpvz.portable.pvzp.PvzpCommon;
@@ -26,6 +27,45 @@ import cn.enaium.fabricpvz.portable.sexy.graphics.Image;
 public final class PlantHooks {
 
     private PlantHooks() {
+    }
+
+    /**
+     * @param seedType a seed type
+     * @return whether a plant is registered under the seed type, i.e. whether it belongs to a mod
+     *     rather than to the game
+     */
+    public static boolean isCustom(int seedType) {
+        return PlantRegistry.entry(seedType) != null;
+    }
+
+    /**
+     * @param plant the plant being drawn
+     * @return whether the registered plant declared itself invisible, i.e. draws nothing of its own
+     */
+    public static boolean invisible(Plant plant) {
+        CustomPlantType entry = PlantRegistry.entry(plant.mSeedType);
+        return entry != null && entry.mInvisible;
+    }
+
+    /**
+     * Whether {@code Plant::Draw} has to draw nothing for this plant. A registered plant has no art
+     * of its own in two cases: it declared itself {@link CustomPlantType#mInvisible invisible}, or
+     * it has no packet image at all (its definition's image column is empty, which is what the
+     * game's static-image branch of {@code Draw} dereferences when the plant has no body reanimation
+     * - {@code PvzpCommon.pvzpDrawImageCelF} would then see a {@code null} image).
+     *
+     * <p>Only the no-body-reanimation branch is affected: a plant drawn from a reanimation (or inside
+     * an I-Zombie level) keeps the game's own drawing.
+     *
+     * @param plant the plant being drawn
+     * @return whether the caller must cancel {@code Plant::Draw}
+     */
+    public static boolean suppressesDraw(Plant plant) {
+        CustomPlantType entry = PlantRegistry.entry(plant.mSeedType);
+        if (entry == null || plant.mBodyReanimID != ReanimationID.REANIMATIONID_NULL) {
+            return false;
+        }
+        return entry.mInvisible || Plant.getImage(plant.mSeedType) == null;
     }
 
     /**
@@ -337,6 +377,41 @@ public final class PlantHooks {
         PvzpCommon.pvzpDrawImageCelScaledF(g, Resources.getImageById(entry.mPacketImageId), x, y,
                 entry.mPacketCelIndex, 0, g.mScaleX, g.mScaleY);
         return true;
+    }
+
+    /**
+     * The seed art {@code Plant::GetImage} answers for a registered plant: every seed-art path the
+     * game has ({@code Plant::DrawSeedType}, the cursor, the packet preview) reads that one method, and
+     * a registered plant has no row in the game's own image table.
+     *
+     * <p>The registered packet art is what the seed looks like: the mod's runtime-built image when it
+     * supplied one, otherwise the fixed image id and cel it pinned. A registered plant that pinned
+     * neither ({@link CustomPlantType#PACKET_IMAGE_FROM_REANIM}) and has no reanimation has no seed
+     * art at all, and the answer stays {@code null} - the game's own {@code GetImage} behaviour, and
+     * what {@link #suppressesDraw(Plant)} uses to skip drawing such a plant.
+     *
+     * @param seedType a seed type
+     * @return the seed art for a registered plant, or {@code null} when nothing is registered or the
+     *     plant pinned no art
+     */
+    public static Image image(int seedType) {
+        CustomPlantType entry = PlantRegistry.entry(seedType);
+        if (entry == null) {
+            return null;
+        }
+
+        if (entry.mPacketImage != null) {
+            Image aImage = entry.mPacketImage.get();
+            if (aImage != null) {
+                return aImage;
+            }
+        }
+
+        if (entry.mPacketImageId != CustomPlantType.PACKET_IMAGE_FROM_REANIM) {
+            return Resources.getImageById(entry.mPacketImageId);
+        }
+
+        return null;
     }
 
     /**

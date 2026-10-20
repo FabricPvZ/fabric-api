@@ -120,6 +120,13 @@ public class CustomPlantType {
     public int mPlantHealth = 300;
 
     /**
+     * Whether the plant draws nothing of its own; {@link PlantHooks#invisible(Plant)} is what
+     * {@code Plant::Draw} consults. A plant whose visible form is something the game already draws
+     * (e.g. a ladder grid item) sets this so the draw never falls into the static-image branch.
+     */
+    public boolean mInvisible;
+
+    /**
      * {@code ProjectileType} a {@code SUBCLASS_SHOOTER} plant fires, or {@code -1} to leave
      * {@code Plant::Fire} to the game's own switch. A kind with no projectile throws there, exactly
      * like an unknown upstream seed type.

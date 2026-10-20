@@ -37,7 +37,7 @@ class AggregatorJarInJarTest {
     private static final String NESTED_DIRECTORY = "META-INF/jars/";
 
     private static final String METADATA = "fabric.mod.json";
-    private static final String VERSION = "1.2.1";
+    private static final String VERSION = "1.2.2";
     private static final List<String> MODULES = List.of("api-base", "api-events", "api-plant", "api-resource", "api-zombie");
 
     /** One {@code {"file": "…"}} entry of the metadata's {@code jars} array. */

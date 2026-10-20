@@ -12,6 +12,8 @@ import cn.enaium.fabricpvz.api.plant.PlantHooks;
 import cn.enaium.fabricpvz.portable.lawn.Plant;
 import cn.enaium.fabricpvz.portable.lawn.Zombie;
 import cn.enaium.fabricpvz.portable.sexy.Rect;
+import cn.enaium.fabricpvz.portable.sexy.graphics.Graphics;
+import cn.enaium.fabricpvz.portable.sexy.graphics.Image;
 
 /**
  * Dispatches {@code Plant}'s per-seed reads to {@link PlantHooks}.
@@ -23,6 +25,35 @@ import cn.enaium.fabricpvz.portable.sexy.Rect;
  */
 @Mixin(Plant.class)
 public abstract class PlantMixin {
+
+    /**
+     * Skips {@code Plant::Draw} for a registered plant that has no art of its own: one that declared
+     * itself invisible, or one with no packet image and no body reanimation (the game's static-image
+     * branch would dereference a {@code null} image). The almanac and the board draw plants through
+     * this method; a registered plant with a reanimation keeps the game's drawing.
+     */
+    @Inject(method = "draw(Lcn/enaium/fabricpvz/portable/sexy/graphics/Graphics;)V", at = @At("HEAD"),
+            cancellable = true)
+    private void fabricpvz$draw(Graphics g, CallbackInfo ci) {
+        if (PlantHooks.suppressesDraw((Plant) (Object) this)) {
+            ci.cancel();
+        }
+    }
+
+    /**
+     * Replaces {@code Plant::GetImage} (Plant.cpp:3803) for a registered plant with the packet art the
+     * mod pinned: the game's own image table has no row for a mod seed, so every seed-art path
+     * ({@code Plant::DrawSeedType}, {@code CursorObject::Draw}, the packet preview) would read
+     * {@code null}. Upstream seed types keep the game's own table.
+     */
+    @Inject(method = "getImage(I)Lcn/enaium/fabricpvz/portable/sexy/graphics/Image;", at = @At("HEAD"),
+            cancellable = true)
+    private static void fabricpvz$getImage(int theSeedType, CallbackInfoReturnable<Image> cir) {
+        Image aImage = PlantHooks.image(theSeedType);
+        if (aImage != null) {
+            cir.setReturnValue(aImage);
+        }
+    }
 
     /**
      * Ticks the registered behaviour, replacing the {@code PlantTypeRegistry.updatePlant(this)} call

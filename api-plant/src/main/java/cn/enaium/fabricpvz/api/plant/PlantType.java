@@ -197,6 +197,16 @@ public final class PlantType {
             return this;
         }
 
+        /**
+         * Makes the plant draw nothing of its own, for a plant whose visible form is something the
+         * game already draws (e.g. a ladder grid item). The plant still occupies its square, is
+         * eaten and behaves normally; only its own rendering is skipped.
+         */
+        public Builder invisible(boolean theInvisible) {
+            definition.mInvisible = theInvisible;
+            return this;
+        }
+
         /** Packet art taken from the plant's reanimation (the upstream path). */
         public Builder packetArtFromReanimation() {
             definition.mPacketImageId = CustomPlantType.PACKET_IMAGE_FROM_REANIM;
